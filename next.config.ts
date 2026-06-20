@@ -1,7 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // บังคับให้ snapshot ใน ./data ถูก bundle เข้า serverless function ทุก route
+  // (อ่านด้วย fs แบบ dynamic path → file tracing จับเองไม่ได้ ต้องระบุ)
+  outputFileTracingIncludes: {
+    "/**": ["./data/**/*"],
+  },
 };
 
 export default nextConfig;

@@ -35,7 +35,7 @@ export default function ProjectIndexPage() {
               return (
                 <Link
                   key={p.id}
-                  href={`/project/${p.id}`}
+                  href={`/project/${p.id}/internal`}
                   className="group block rounded-2xl border border-[#DED8C8] bg-[#FBFAF6] p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
                 >
                   <div className="mb-2 flex items-center justify-between gap-3">

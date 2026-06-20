@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getProject } from "@/app/lib/projects";
-import ProjectView from "./ProjectView";
+import ProjectView from "../ProjectView";
 
 export const dynamic = "force-dynamic";
 
@@ -15,12 +15,12 @@ export async function generateMetadata({
   const { id } = await params;
   const p = getProject(id);
   return {
-    title: p ? `${p.projectName} — ข้อเสนอโครงการ` : "ไม่พบโปรเจกต์",
+    title: p ? `${p.projectName} — ใบประเมิน (ภายใน)` : "ไม่พบโปรเจกต์",
   };
 }
 
-// หน้าสำหรับลูกค้า (สะอาด — ไม่มี man-day/เรต/ศัพท์ภายใน) — ลิงก์ที่ส่งให้ลูกค้า
-export default async function ProjectClientPage({
+// หน้าฉบับเต็มสำหรับทีมภายใน (man-day, เรต, เทียบ stack, ฯลฯ)
+export default async function ProjectInternalPage({
   params,
 }: {
   params: Promise<Params>;
@@ -28,5 +28,5 @@ export default async function ProjectClientPage({
   const { id } = await params;
   const p = getProject(id);
   if (!p) notFound();
-  return <ProjectView p={p} audience="client" />;
+  return <ProjectView p={p} audience="internal" />;
 }
