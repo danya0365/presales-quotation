@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { totals, sumMd, fmtTHB, type Project } from "@/app/lib/projects";
+import { totals, sumMd, aiTotals, fmtTHB, type Project } from "@/app/lib/projects";
 import SectionNav, { type TocItem } from "./SectionNav";
 
 export type Audience = "client" | "internal";
@@ -59,6 +59,8 @@ export default function ProjectView({
   const internal = audience === "internal";
   const t = totals(p);
   const contFactor = p.contingencyPct / 100;
+  // โหมด AI — แสดงเทียบ คน vs AI เฉพาะฝั่ง internal (เอกสารลูกค้าเดิมไม่เปลี่ยน)
+  const aiT = aiTotals(p);
 
   // เวอร์ชันลูกค้า: ตัด role ภายในในวงเล็บออกจากชื่อผู้จัดทำ
   const preparedByRaw = p.preparedBy ?? "เคาะดีญะฮ์";
@@ -451,6 +453,179 @@ export default function ProjectView({
                     <strong>เฟส 2:</strong> {p.phasing.phase2}
                   </li>
                 </ul>
+              </div>
+            )}
+
+            {/* ทางเลือก: ให้ AI เขียนโค้ด — เทียบ คน vs AI (internal only) */}
+            {p.ai && aiT && (
+              <div className="mt-8 rounded-2xl border-2 border-dashed border-[#3E7C76] bg-[#F0F5F4] p-5 sm:p-6">
+                <h3 className="flex items-center gap-2 text-lg font-bold text-[#2F605B]">
+                  🤖 ทางเลือก: ให้ AI เขียนโค้ด (เทียบ คน vs AI)
+                </h3>
+                <p className="mt-1 text-sm text-[#5C6A68]">
+                  คิดแยกจากฐานเดิม — โมดูล/ขอบเขตเท่าเดิม แต่ AI เร่งงานเขียนโค้ด คนเปลี่ยนบทเป็น{" "}
+                  <strong className="text-[#2F605B]">{p.ai.roleNote}</strong>.{" "}
+                  ราคาฝั่ง AI ถูกลงเพราะ <strong>วันน้อยลง</strong> ไม่ใช่เรตถูกลง (เรตเท่าเดิม)
+                </p>
+
+                {/* การ์ดสรุปเทียบ 2 ทาง */}
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-xl border border-[#DED8C8] bg-white p-4">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-[#5C6A68]">
+                      👷 ทีมคน (ฐานเดิม)
+                    </div>
+                    <div className="mt-1 text-2xl font-bold text-[#2F605B]">
+                      {t.totalLow}–{t.totalHigh} <span className="text-base font-normal">man-day</span>
+                    </div>
+                    {p.timeline?.elapsedNote && (
+                      <div className="mt-0.5 text-xs text-[#5C6A68]">{p.timeline.elapsedNote}</div>
+                    )}
+                    <div className="mt-2 text-sm font-semibold text-[#B5762E]">
+                      ≈ {fmtTHB(p.summary.priceLow)} – {fmtTHB(p.summary.priceHigh)} บาท
+                    </div>
+                  </div>
+                  <div className="rounded-xl border-2 border-[#3E7C76] bg-[#E5EEE2] p-4">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-[#3E7C76]">
+                      🤖 AI + ผู้ควบคุม
+                    </div>
+                    <div className="mt-1 text-2xl font-bold text-[#2F605B]">
+                      {aiT.totalLow}–{aiT.totalHigh} <span className="text-base font-normal">man-day</span>
+                    </div>
+                    <div className="mt-0.5 text-xs text-[#5C6A68]">{p.ai.summary.elapsedNote}</div>
+                    <div className="mt-2 text-sm font-semibold text-[#B5762E]">
+                      ≈ {fmtTHB(p.ai.summary.priceLow)} – {fmtTHB(p.ai.summary.priceHigh)} บาท
+                    </div>
+                  </div>
+                </div>
+
+                {/* AI man-day → ราคา ตามเรต */}
+                <h4 className="mt-5 mb-2 text-sm font-semibold text-[#2F605B]">
+                  AI man-day → ราคา (ก่อน VAT · เรตเท่าเดิม)
+                </h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse overflow-hidden rounded-lg bg-white text-sm">
+                    <tbody>
+                      <tr>
+                        <td className="border-b border-[#DED8C8] p-3">รวมย่อย AI (dev + support)</td>
+                        <td className="border-b border-[#DED8C8] p-3 text-right tabular-nums">
+                          {aiT.subtotalLow}
+                        </td>
+                        <td className="border-b border-[#DED8C8] p-3 text-right tabular-nums">
+                          {aiT.subtotalHigh}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="border-b border-[#DED8C8] p-3">
+                          + Contingency {p.ai.contingencyPct}%
+                        </td>
+                        <td className="border-b border-[#DED8C8] p-3 text-right tabular-nums">
+                          {Math.round(aiT.subtotalLow * (p.ai.contingencyPct / 100))}
+                        </td>
+                        <td className="border-b border-[#DED8C8] p-3 text-right tabular-nums">
+                          {Math.round(aiT.subtotalHigh * (p.ai.contingencyPct / 100))}
+                        </td>
+                      </tr>
+                      <tr className="bg-[#3E7C76] font-bold text-white">
+                        <td className="p-3">รวม AI man-day ทั้งสิ้น</td>
+                        <td className="p-3 text-right tabular-nums">~{aiT.totalLow}</td>
+                        <td className="p-3 text-right tabular-nums">~{aiT.totalHigh}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div className="mt-3 overflow-x-auto">
+                  <table className="w-full border-collapse overflow-hidden rounded-lg bg-white text-sm">
+                    <thead>
+                      <tr className="bg-[#2F605B] text-left text-white">
+                        <th className="p-3">เรต man-day</th>
+                        <th className="p-3 text-right">ราคา low</th>
+                        <th className="p-3 text-right">ราคา high</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {p.ai.rates.map((r, i) => (
+                        <tr key={r.label} className={i % 2 ? "bg-[#F7F4EC]" : ""}>
+                          <td className="border-b border-[#DED8C8] p-3">
+                            {r.label} · {fmtTHB(r.rate)} บาท/วัน
+                          </td>
+                          <td className="border-b border-[#DED8C8] p-3 text-right tabular-nums">
+                            {fmtTHB(aiT.totalLow * r.rate)}
+                          </td>
+                          <td className="border-b border-[#DED8C8] p-3 text-right tabular-nums">
+                            {fmtTHB(aiT.totalHigh * r.rate)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* ตัวเร่งราย module (ที่มาของวันที่ลด) */}
+                <h4 className="mt-5 mb-2 text-sm font-semibold text-[#2F605B]">
+                  ตัวเร่งราย module (ที่มา: AI md = คน ÷ ตัวเร่ง)
+                </h4>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse overflow-hidden rounded-lg bg-white text-sm">
+                    <thead>
+                      <tr className="bg-[#2F605B] text-left text-white">
+                        <th className="p-3">รหัส</th>
+                        <th className="p-3">โมดูล</th>
+                        <th className="p-3 text-right">คน (low–high)</th>
+                        <th className="p-3">ตัวเร่ง</th>
+                        <th className="p-3 text-right">AI (low–high)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {p.ai.modules.map((am, i) => {
+                        const hm = p.modules.find((m) => m.code === am.code);
+                        return (
+                          <tr key={am.code} className={i % 2 ? "bg-[#F7F4EC]" : ""}>
+                            <td className="border-b border-[#DED8C8] p-3 font-mono text-xs">{am.code}</td>
+                            <td className="border-b border-[#DED8C8] p-3">{hm?.name ?? am.code}</td>
+                            <td className="border-b border-[#DED8C8] p-3 text-right tabular-nums">
+                              {hm ? `${hm.mdLow}–${hm.mdHigh}` : "—"}
+                            </td>
+                            <td className="border-b border-[#DED8C8] p-3 text-xs text-[#5C6A68]">
+                              {am.factor}
+                            </td>
+                            <td className="border-b border-[#DED8C8] p-3 text-right tabular-nums">
+                              {am.aiMdLow}–{am.aiMdHigh}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="mt-2 text-xs text-[#5C6A68]">{p.ai.factorNote}</p>
+
+                {p.ai.assumptions?.length ? (
+                  <>
+                    <h4 className="mt-5 mb-1 text-sm font-semibold text-[#2F605B]">
+                      สมมติฐานเฉพาะโหมด AI
+                    </h4>
+                    <ul className="list-disc space-y-1 pl-5 text-sm">
+                      {p.ai.assumptions.map((a, i) => (
+                        <li key={i}>{a}</li>
+                      ))}
+                    </ul>
+                  </>
+                ) : null}
+
+                {p.ai.risks?.length ? (
+                  <>
+                    <h4 className="mt-4 mb-1 text-sm font-semibold text-[#2F605B]">
+                      ความเสี่ยงเฉพาะโหมด AI
+                    </h4>
+                    <ul className="list-disc space-y-1 pl-5 text-sm">
+                      {p.ai.risks.map((r, i) => (
+                        <li key={i}>
+                          <strong>{r.risk}</strong> — {r.mitigation}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : null}
               </div>
             )}
           </Section>

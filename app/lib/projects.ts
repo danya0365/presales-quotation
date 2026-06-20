@@ -38,6 +38,29 @@ export type StackInfo = {
   cons: string[];
 };
 
+// โหมดประเมิน "ถ้าให้ AI เขียนโค้ด" — คิดแยกจากของเดิม (คน) เป็นตัวเร่งบน module เดิม
+// AI man-day = man-day คน ÷ ตัวเร่ง (factor) · คนเปลี่ยนบทเป็นผู้ควบคุม AI + รีวิว · เรตเท่าเดิม
+export type AiModule = { code: string; aiMdLow: number; aiMdHigh: number; factor: string };
+export type AiSupport = { name: string; aiMdLow: number; aiMdHigh: number };
+export type AiEstimate = {
+  approach: "speedup";
+  factorNote: string; // อธิบายตัวเร่งที่ใช้ (ที่มาของวันที่ลด)
+  roleNote: string; // บทใหม่ของคน เช่น "ผู้ควบคุม AI + รีวิว + เทสต์"
+  modules: AiModule[]; // ผูกกับ modules[] เดิมผ่าน code
+  support: AiSupport[];
+  contingencyPct: number; // default 25 (ความแปรปรวนรีวิว/แก้งานสูงกว่าโหมดคน)
+  rates: Rate[]; // = เรตเดิม (Junior–Expert) → ราคาลงเพราะวันน้อยลง ไม่ใช่เรตถูกลง
+  summary: {
+    manDayLow: number;
+    manDayHigh: number;
+    priceLow: number;
+    priceHigh: number;
+    elapsedNote: string; // เวลาจริงด้วย AI เช่น "~3–6 สัปดาห์"
+  };
+  assumptions?: string[];
+  risks?: Risk[];
+};
+
 export type Project = {
   id: string;
   projectName: string;
@@ -77,6 +100,7 @@ export type Project = {
   risks: Risk[];
   openQuestions: string[];
   outOfPrice: string[];
+  ai?: AiEstimate; // optional — ใบที่ไม่มีก็ render เดิมได้ (backward-compatible)
 };
 
 // uuid v7 (และ v1-v8) ขึ้นต้นด้วย 8 hex + "-" — ใช้กรองโฟลเดอร์ที่ใช่
@@ -132,4 +156,24 @@ export function totals(p: Project) {
 
 export function fmtTHB(n: number) {
   return new Intl.NumberFormat("th-TH").format(n);
+}
+
+// ---- ตัวช่วยคำนวณโหมด AI (คู่ขนานกับ totals() — ไม่แตะของเดิม) ----
+export function sumAiMd(items: { aiMdLow: number; aiMdHigh: number }[]) {
+  return items.reduce(
+    (acc, m) => ({ low: acc.low + m.aiMdLow, high: acc.high + m.aiMdHigh }),
+    { low: 0, high: 0 },
+  );
+}
+
+export function aiTotals(p: Project) {
+  if (!p.ai) return null;
+  const dev = sumAiMd(p.ai.modules);
+  const support = sumAiMd(p.ai.support);
+  const subtotalLow = dev.low + support.low;
+  const subtotalHigh = dev.high + support.high;
+  const factor = 1 + p.ai.contingencyPct / 100;
+  const totalLow = Math.round(subtotalLow * factor);
+  const totalHigh = Math.round(subtotalHigh * factor);
+  return { dev, support, subtotalLow, subtotalHigh, totalLow, totalHigh };
 }
