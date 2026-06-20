@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { totals, sumMd, fmtTHB, type Project } from "@/app/lib/projects";
+import SectionNav, { type TocItem } from "./SectionNav";
 
 export type Audience = "client" | "internal";
 
@@ -34,7 +35,7 @@ function Section({
   return (
     <section
       id={id}
-      className="mb-7 scroll-mt-24 rounded-2xl border border-[#DED8C8] bg-[#FBFAF6] p-6 shadow-sm sm:p-8"
+      className="mb-7 scroll-mt-20 rounded-2xl border border-[#DED8C8] bg-[#FBFAF6] p-6 shadow-sm sm:p-8"
     >
       <h2 className="flex items-center text-xl font-bold text-[#2F605B]">
         <span className="mr-3 flex h-9 w-9 flex-none items-center justify-center rounded-lg bg-[#3E7C76] text-base font-bold text-white">
@@ -66,16 +67,20 @@ export default function ProjectView({
   // เวอร์ชันลูกค้า: ตัดรหัสโมดูลภายในแบบ "(M-07)" ที่อาจฝังใน free-text ออก
   const clean = (s: string) => (internal ? s : s.replace(/\s*\(M-\d+\)/g, ""));
 
-  // สารบัญ — เฉพาะหัวข้อที่หน้านี้แสดงจริง (ลูกค้าไม่มี Timeline/Stack)
-  const toc = [
-    { id: "overview", label: "ภาพรวม & เป้าหมาย" },
+  // สารบัญ — ตามลำดับ section ใน document-spec.md (เฉพาะ section ที่หน้านี้แสดงจริง)
+  const toc: TocItem[] = [
+    { id: "overview", label: "ภาพรวม" },
     { id: "scope", label: "ขอบเขตงาน" },
     { id: "actors", label: "ผู้ใช้ & บทบาท" },
-    { id: "modules", label: internal ? "โมดูล & man-day" : "ขอบเขตฟีเจอร์" },
-    { id: "pricing", label: "สรุปราคา" },
+    ...(p.useCases?.length ? [{ id: "usecases", label: "Use Case" }] : []),
+    { id: "modules", label: internal ? "โมดูล & man-day" : "ฟีเจอร์" },
+    ...(p.nonFunctional?.length ? [{ id: "nonfunc", label: "Non-functional" }] : []),
     ...(internal && p.timeline ? [{ id: "timeline", label: "Timeline & Stack" }] : []),
+    { id: "cost", label: "ค่าใช้จ่าย & ราคา" },
     { id: "notes", label: "สมมติฐาน & ความเสี่ยง" },
   ];
+  // เลข section อัตโนมัติจากลำดับใน TOC → HTML/React/spec ตรงกันเสมอ
+  const secNum = (id: string) => String(toc.findIndex((tt) => tt.id === id) + 1);
 
   return (
     <main className="min-h-screen bg-[#F4F1EA] text-[#2D3A3A]">
@@ -97,25 +102,8 @@ export default function ProjectView({
         </div>
       </header>
 
-      {/* สารบัญ — กดแล้วเลื่อนไปหัวข้อ (smooth scroll) */}
-      <div className="px-5">
-        <nav className="mx-auto -mt-7 mb-2 max-w-4xl rounded-2xl border border-[#DED8C8] bg-[#FBFAF6] px-6 py-4 shadow-lg">
-          <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-[#2F605B]">
-            สารบัญ
-          </div>
-          <div className="flex flex-wrap gap-x-5 gap-y-2">
-            {toc.map((s, i) => (
-              <a
-                key={s.id}
-                href={`#${s.id}`}
-                className="border-b-2 border-transparent pb-0.5 text-sm font-medium text-[#2D3A3A] transition hover:border-[#C98A3B] hover:text-[#3E7C76]"
-              >
-                {i + 1}. {s.label}
-              </a>
-            ))}
-          </div>
-        </nav>
-      </div>
+      {/* สารบัญแบบ sticky/pin + scroll-spy */}
+      <SectionNav toc={toc} />
 
       <div className="mx-auto max-w-4xl px-5 py-10">
         {internal && (
@@ -147,7 +135,7 @@ export default function ProjectView({
         </div>
 
         {/* 1. Overview */}
-        <Section id="overview" n="1" title="ภาพรวม & เป้าหมายธุรกิจ">
+        <Section id="overview" n={secNum("overview")} title="ภาพรวม & เป้าหมายธุรกิจ">
           <p className="leading-relaxed">{clean(p.overview)}</p>
           {p.businessGoal && (
             <ul className="mt-4 space-y-2 text-sm">
@@ -181,7 +169,7 @@ export default function ProjectView({
         {/* 2. Scope */}
         <Section
           id="scope"
-          n="2"
+          n={secNum("scope")}
           title="ขอบเขตงาน (Scope)"
           sub={internal ? "แยก in/out ให้ชัด — กันงานบานปลาย" : undefined}
         >
@@ -206,7 +194,7 @@ export default function ProjectView({
         </Section>
 
         {/* 3. Actors */}
-        <Section id="actors" n="3" title="ผู้ใช้ & บทบาท (Actors)">
+        <Section id="actors" n={secNum("actors")} title="ผู้ใช้ & บทบาท (Actors)">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse overflow-hidden rounded-lg bg-white text-sm">
               <thead>
@@ -227,10 +215,25 @@ export default function ProjectView({
           </div>
         </Section>
 
-        {/* 4. Modules */}
+        {/* 4. Use Cases */}
+        {p.useCases?.length ? (
+          <Section id="usecases" n={secNum("usecases")} title="Use Case หลัก">
+            <div className="grid gap-3 sm:grid-cols-2">
+              {p.useCases.map((u, i) => (
+                <div key={i} className="rounded-xl border border-[#DED8C8] bg-white p-4">
+                  <div className="font-semibold text-[#2F605B]">{clean(u.title)}</div>
+                  {u.actor && <div className="mt-0.5 text-xs font-medium text-[#C98A3B]">{u.actor}</div>}
+                  <div className="mt-1 text-sm text-[#5C6A68]">{clean(u.desc)}</div>
+                </div>
+              ))}
+            </div>
+          </Section>
+        ) : null}
+
+        {/* 5. Modules */}
         <Section
           id="modules"
-          n="4"
+          n={secNum("modules")}
           title={internal ? "โมดูล & ประเมิน man-day" : "ขอบเขตฟีเจอร์ (โมดูล)"}
           sub={internal ? "ฐานของการตีราคา — man-day เป็นช่วง low–high" : undefined}
         >
@@ -297,9 +300,64 @@ export default function ProjectView({
           )}
         </Section>
 
-        {/* 5. Pricing */}
+        {/* 6. Non-functional */}
+        {p.nonFunctional?.length ? (
+          <Section
+            id="nonfunc"
+            n={secNum("nonfunc")}
+            title="ความต้องการ Non-functional"
+            sub={internal ? "สิ่งที่ลูกค้ามักไม่พูด แต่กระทบราคามากที่สุด" : undefined}
+          >
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {p.nonFunctional.map((nf, i) => (
+                <div key={i} className="rounded-xl border border-[#DED8C8] bg-white p-4 text-center">
+                  <div className="text-lg font-bold text-[#3E7C76]">{nf.key}</div>
+                  <div className="mt-0.5 text-xs text-[#5C6A68]">{nf.label}</div>
+                  {nf.detail && <div className="mt-1 text-xs text-[#5C6A68]">{nf.detail}</div>}
+                </div>
+              ))}
+            </div>
+          </Section>
+        ) : null}
+
+        {/* 7. Timeline & Stack — internal only */}
+        {internal && p.timeline && (
+          <Section id="timeline" n={secNum("timeline")} title="Timeline & เปรียบเทียบ Stack" sub={p.timeline.teamAssumption}>
+            <p className="mb-4 text-sm">{p.timeline.elapsedNote}</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {p.timeline.stacks.map((s, i) => (
+                <div
+                  key={s.name}
+                  className={`rounded-xl border border-[#DED8C8] bg-white p-5 ${
+                    i === 0 ? "border-t-4 border-t-[#3E7C76]" : "border-t-4 border-t-[#C98A3B]"
+                  }`}
+                >
+                  <h4 className="text-base font-bold">{s.name}</h4>
+                  <p className="mb-2 text-sm text-[#5C6A68]">⏱ {s.elapsed}</p>
+                  <ul className="space-y-1 text-sm">
+                    {s.pros.map((x, j) => (
+                      <li key={`p${j}`} className="text-[#4F7A52]">
+                        ✓ {x}
+                      </li>
+                    ))}
+                    {s.cons.map((x, j) => (
+                      <li key={`c${j}`} className="text-[#A8543F]">
+                        – {x}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 rounded-xl border-l-4 border-[#C98A3B] bg-[#F6ECCF] p-4 text-sm">
+              <strong className="text-[#2F605B]">สรุป:</strong> {p.timeline.verdict}
+            </div>
+          </Section>
+        )}
+
+        {/* 8. Cost & Price */}
         {internal ? (
-          <Section id="pricing" n="5" title="งานสนับสนุน & สรุปราคา" sub="ทุกตัวเลขมีที่มา: ราคา ← man-day ← module">
+          <Section id="cost" n={secNum("cost")} title="งานสนับสนุน & สรุปราคา" sub="ทุกตัวเลขมีที่มา: ราคา ← man-day ← module">
             <div className="overflow-x-auto">
               <table className="w-full border-collapse overflow-hidden rounded-lg bg-white text-sm">
                 <thead>
@@ -397,7 +455,7 @@ export default function ProjectView({
             )}
           </Section>
         ) : (
-          <Section id="pricing" n="5" title="สรุปราคา">
+          <Section id="cost" n={secNum("cost")} title="สรุปราคา">
             <div className="rounded-2xl border border-[#DED8C8] bg-white p-6 text-center">
               <div className="text-sm text-[#5C6A68]">ราคารวมทั้งโครงการ (ก่อน VAT)</div>
               <div className="my-1 text-2xl font-bold text-[#B5762E]">
@@ -408,45 +466,10 @@ export default function ProjectView({
           </Section>
         )}
 
-        {/* 6. Timeline & Stack — internal only */}
-        {internal && p.timeline && (
-          <Section id="timeline" n="6" title="Timeline & เปรียบเทียบ Stack" sub={p.timeline.teamAssumption}>
-            <p className="mb-4 text-sm">{p.timeline.elapsedNote}</p>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {p.timeline.stacks.map((s, i) => (
-                <div
-                  key={s.name}
-                  className={`rounded-xl border border-[#DED8C8] bg-white p-5 ${
-                    i === 0 ? "border-t-4 border-t-[#3E7C76]" : "border-t-4 border-t-[#C98A3B]"
-                  }`}
-                >
-                  <h4 className="text-base font-bold">{s.name}</h4>
-                  <p className="mb-2 text-sm text-[#5C6A68]">⏱ {s.elapsed}</p>
-                  <ul className="space-y-1 text-sm">
-                    {s.pros.map((x, j) => (
-                      <li key={`p${j}`} className="text-[#4F7A52]">
-                        ✓ {x}
-                      </li>
-                    ))}
-                    {s.cons.map((x, j) => (
-                      <li key={`c${j}`} className="text-[#A8543F]">
-                        – {x}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 rounded-xl border-l-4 border-[#C98A3B] bg-[#F6ECCF] p-4 text-sm">
-              <strong className="text-[#2F605B]">สรุป:</strong> {p.timeline.verdict}
-            </div>
-          </Section>
-        )}
-
-        {/* 7. Assumptions / Risks / Open Q / Out of price */}
+        {/* 9. Assumptions / Risks / Open Q / Out of price */}
         <Section
           id="notes"
-          n={internal ? "7" : "6"}
+          n={secNum("notes")}
           title={
             internal
               ? "สมมติฐาน · ความเสี่ยง · คำถามที่ต้องถามเพิ่ม"

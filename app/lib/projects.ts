@@ -28,6 +28,8 @@ export type SupportItem = { name: string; mdLow: number; mdHigh: number };
 export type Rate = { label: string; rate: number };
 export type Actor = { role: string; can: string };
 export type Risk = { risk: string; impact: string; likelihood: string; mitigation: string };
+export type UseCase = { title: string; actor?: string; desc: string };
+export type NonFunc = { key: string; label: string; detail?: string };
 
 export type StackInfo = {
   name: string;
@@ -55,8 +57,10 @@ export type Project = {
   overview: string;
   businessGoal?: { problem: string; successMetric: string };
   actors: Actor[];
+  useCases?: UseCase[];
   scope: { in: string[]; out: string[] };
   modules: Module[];
+  nonFunctional?: NonFunc[];
   support: SupportItem[];
   contingencyPct: number;
   rates: Rate[];
