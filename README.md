@@ -167,7 +167,30 @@ ai-agents/presales/output/<uuid-v7>/
 └── output.html    ← ใบเสนอ standalone (เปิดตรงในเบราว์เซอร์ก็ได้)
 ```
 
-รีเฟรช `/project` แล้วโปรเจกต์ใหม่จะโผล่ขึ้นมาเอง 🎉
+บนเครื่อง dev: รีเฟรช `/project` แล้วโปรเจกต์ใหม่จะโผล่ขึ้นมาเอง (อ่าน `presales/output` ของจริงตรง ๆ) 🎉
+
+---
+
+## ☁️ Deploy (Vercel)
+
+Vercel deploy แค่ **repo เดียว** จึงไม่มีโฟลเดอร์ `presales/output` (อยู่อีก repo) — ต้อง **bundle snapshot ของ data เข้ามาใน repo นี้ก่อน** ผ่านโฟลเดอร์ `data/`
+
+```bash
+npm run sync:data    # ก๊อป data.json ทุกใบจาก presales/output → ./data
+git add data && git commit -m "chore: sync quotation data"
+git push             # Vercel auto-redeploy
+```
+
+ลำดับการหา data (ใน [`app/lib/projects.ts`](app/lib/projects.ts)):
+
+| ลำดับ | แหล่ง | ใช้เมื่อ |
+|---|---|---|
+| 1 | `PRESALES_OUTPUT` (env) | override เอง |
+| 2 | `../../ai-agents/presales/output` | เครื่อง dev (2 repo ติดกัน) — ของจริง |
+| 3 | `./data` (committed snapshot) | **Vercel / standalone** |
+
+> 🔁 ทุกครั้งที่มีใบประเมินใหม่ แล้วอยากให้ขึ้น Vercel → รัน `npm run sync:data` แล้ว push ใหม่
+> ⚠️ ไซต์ public — `data/` มีราคา/ชื่อลูกค้าจริง ใครมีลิงก์ก็เห็นได้
 
 ---
 

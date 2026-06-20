@@ -1,13 +1,18 @@
 import fs from "node:fs";
 import path from "node:path";
 
-// ใบประเมินแต่ละโปรเจกต์เก็บที่ ai-agents/presales/output/<uuid>/data.json (คนละ tree กับแอปนี้)
-// แอปนี้อยู่ที่ workspaces/presales-quotation → รันปกติ cwd=workspaces/presales-quotation
-// ถอย 2 ชั้นถึง ai-project แล้วเข้า ai-agents/presales/output
-// override ได้ด้วย env PRESALES_OUTPUT (absolute path) เผื่อย้าย/รันที่อื่น
-const OUTPUT_ROOT =
-  process.env.PRESALES_OUTPUT ??
-  path.resolve(process.cwd(), "..", "..", "ai-agents", "presales", "output");
+// หาตำแหน่งโฟลเดอร์ data ตามลำดับ:
+//   1) env PRESALES_OUTPUT (absolute path) — override เองได้
+//   2) presales/output ของจริง (เครื่อง dev: 2 repo อยู่ติดกัน) — source of truth
+//   3) ./data ที่ bundle มากับ repo (Vercel/standalone: deploy แค่ repo เดียว ไม่มี presales/output)
+// gen snapshot ข้อ 3 ด้วย `npm run sync:data` ก่อน deploy
+function resolveOutputRoot(): string {
+  if (process.env.PRESALES_OUTPUT) return process.env.PRESALES_OUTPUT;
+  const live = path.resolve(process.cwd(), "..", "..", "ai-agents", "presales", "output");
+  if (fs.existsSync(live)) return live;
+  return path.join(process.cwd(), "data");
+}
+const OUTPUT_ROOT = resolveOutputRoot();
 
 export type Module = {
   group: string;
