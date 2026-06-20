@@ -19,18 +19,23 @@ function complexityBadge(c: string) {
 }
 
 function Section({
+  id,
   n,
   title,
   sub,
   children,
 }: {
+  id?: string;
   n: string;
   title: string;
   sub?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="mb-7 rounded-2xl border border-[#DED8C8] bg-[#FBFAF6] p-6 shadow-sm sm:p-8">
+    <section
+      id={id}
+      className="mb-7 scroll-mt-24 rounded-2xl border border-[#DED8C8] bg-[#FBFAF6] p-6 shadow-sm sm:p-8"
+    >
       <h2 className="flex items-center text-xl font-bold text-[#2F605B]">
         <span className="mr-3 flex h-9 w-9 flex-none items-center justify-center rounded-lg bg-[#3E7C76] text-base font-bold text-white">
           {n}
@@ -61,6 +66,17 @@ export default function ProjectView({
   // เวอร์ชันลูกค้า: ตัดรหัสโมดูลภายในแบบ "(M-07)" ที่อาจฝังใน free-text ออก
   const clean = (s: string) => (internal ? s : s.replace(/\s*\(M-\d+\)/g, ""));
 
+  // สารบัญ — เฉพาะหัวข้อที่หน้านี้แสดงจริง (ลูกค้าไม่มี Timeline/Stack)
+  const toc = [
+    { id: "overview", label: "ภาพรวม & เป้าหมาย" },
+    { id: "scope", label: "ขอบเขตงาน" },
+    { id: "actors", label: "ผู้ใช้ & บทบาท" },
+    { id: "modules", label: internal ? "โมดูล & man-day" : "ขอบเขตฟีเจอร์" },
+    { id: "pricing", label: "สรุปราคา" },
+    ...(internal && p.timeline ? [{ id: "timeline", label: "Timeline & Stack" }] : []),
+    { id: "notes", label: "สมมติฐาน & ความเสี่ยง" },
+  ];
+
   return (
     <main className="min-h-screen bg-[#F4F1EA] text-[#2D3A3A]">
       {/* Hero */}
@@ -80,6 +96,26 @@ export default function ProjectView({
           )}
         </div>
       </header>
+
+      {/* สารบัญ — กดแล้วเลื่อนไปหัวข้อ (smooth scroll) */}
+      <div className="px-5">
+        <nav className="mx-auto -mt-7 mb-2 max-w-4xl rounded-2xl border border-[#DED8C8] bg-[#FBFAF6] px-6 py-4 shadow-lg">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-[#2F605B]">
+            สารบัญ
+          </div>
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
+            {toc.map((s, i) => (
+              <a
+                key={s.id}
+                href={`#${s.id}`}
+                className="border-b-2 border-transparent pb-0.5 text-sm font-medium text-[#2D3A3A] transition hover:border-[#C98A3B] hover:text-[#3E7C76]"
+              >
+                {i + 1}. {s.label}
+              </a>
+            ))}
+          </div>
+        </nav>
+      </div>
 
       <div className="mx-auto max-w-4xl px-5 py-10">
         {internal && (
@@ -111,7 +147,7 @@ export default function ProjectView({
         </div>
 
         {/* 1. Overview */}
-        <Section n="1" title="ภาพรวม & เป้าหมายธุรกิจ">
+        <Section id="overview" n="1" title="ภาพรวม & เป้าหมายธุรกิจ">
           <p className="leading-relaxed">{clean(p.overview)}</p>
           {p.businessGoal && (
             <ul className="mt-4 space-y-2 text-sm">
@@ -144,6 +180,7 @@ export default function ProjectView({
 
         {/* 2. Scope */}
         <Section
+          id="scope"
           n="2"
           title="ขอบเขตงาน (Scope)"
           sub={internal ? "แยก in/out ให้ชัด — กันงานบานปลาย" : undefined}
@@ -169,7 +206,7 @@ export default function ProjectView({
         </Section>
 
         {/* 3. Actors */}
-        <Section n="3" title="ผู้ใช้ & บทบาท (Actors)">
+        <Section id="actors" n="3" title="ผู้ใช้ & บทบาท (Actors)">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse overflow-hidden rounded-lg bg-white text-sm">
               <thead>
@@ -192,6 +229,7 @@ export default function ProjectView({
 
         {/* 4. Modules */}
         <Section
+          id="modules"
           n="4"
           title={internal ? "โมดูล & ประเมิน man-day" : "ขอบเขตฟีเจอร์ (โมดูล)"}
           sub={internal ? "ฐานของการตีราคา — man-day เป็นช่วง low–high" : undefined}
@@ -261,7 +299,7 @@ export default function ProjectView({
 
         {/* 5. Pricing */}
         {internal ? (
-          <Section n="5" title="งานสนับสนุน & สรุปราคา" sub="ทุกตัวเลขมีที่มา: ราคา ← man-day ← module">
+          <Section id="pricing" n="5" title="งานสนับสนุน & สรุปราคา" sub="ทุกตัวเลขมีที่มา: ราคา ← man-day ← module">
             <div className="overflow-x-auto">
               <table className="w-full border-collapse overflow-hidden rounded-lg bg-white text-sm">
                 <thead>
@@ -359,7 +397,7 @@ export default function ProjectView({
             )}
           </Section>
         ) : (
-          <Section n="5" title="สรุปราคา">
+          <Section id="pricing" n="5" title="สรุปราคา">
             <div className="rounded-2xl border border-[#DED8C8] bg-white p-6 text-center">
               <div className="text-sm text-[#5C6A68]">ราคารวมทั้งโครงการ (ก่อน VAT)</div>
               <div className="my-1 text-2xl font-bold text-[#B5762E]">
@@ -372,7 +410,7 @@ export default function ProjectView({
 
         {/* 6. Timeline & Stack — internal only */}
         {internal && p.timeline && (
-          <Section n="6" title="Timeline & เปรียบเทียบ Stack" sub={p.timeline.teamAssumption}>
+          <Section id="timeline" n="6" title="Timeline & เปรียบเทียบ Stack" sub={p.timeline.teamAssumption}>
             <p className="mb-4 text-sm">{p.timeline.elapsedNote}</p>
             <div className="grid gap-4 sm:grid-cols-2">
               {p.timeline.stacks.map((s, i) => (
@@ -407,6 +445,7 @@ export default function ProjectView({
 
         {/* 7. Assumptions / Risks / Open Q / Out of price */}
         <Section
+          id="notes"
           n={internal ? "7" : "6"}
           title={
             internal
