@@ -326,6 +326,18 @@
     "phase1": "Loyalty MVP (กลุ่ม A บางส่วน + B ทั้งหมด): ทะเบียนสมาชิก + points engine + แลกรางวัล + Staff Terminal ใช้จริงกับสาขานำร่อง → ~80–135 man-day (รวม support + contingency) ≈ 200,000–1,080,000 บาท (ตามเรต Junior–Expert)",
     "phase2": "Engagement เต็ม (กลุ่ม C/D): Tier + แคมเปญแต้มคูณ + Referral + multi-tenant เต็ม + dashboards — ตีราคาแม่นเมื่อยืนยันกฎ tier/แคมเปญและจำนวนแบรนด์/สมาชิก"
   },
+  "schedule": {
+    "unit": "day",
+    "daysPerWeek": 5,
+    "note": "วันแบบ relative working day (วันที่ 1 = วันเริ่มจริง · จ–ศ) · ทีม ~2 effective heads · รวม ~90 วันทำงาน (~18 สัปดาห์)",
+    "phases": [
+      { "name": "Platform & Tenant", "group": "A", "startDay": 1, "endDay": 20, "items": ["วาง multi-tenant schema + base infra", "auth/RBAC เจ้าของร้าน + พนักงาน", "โครง UI หลัง + ตั้งค่าร้าน"] },
+      { "name": "Member & Points Engine", "group": "B", "startDay": 18, "endDay": 46, "items": ["สมัคร/จัดการสมาชิก + Staff Terminal", "สะสม/แลกแต้ม + กฎการให้แต้ม", "ประวัติแต้ม + กันโกง/หมดอายุ"] },
+      { "name": "Engagement (Tier / Campaign / Referral)", "group": "C", "startDay": 42, "endDay": 65, "items": ["ระดับสมาชิก (tier) + สิทธิประโยชน์", "แคมเปญแต้มคูณ/โปรโมชัน", "ระบบแนะนำเพื่อน (referral)"] },
+      { "name": "Dashboard & Report", "group": "D", "startDay": 58, "endDay": 78, "items": ["แดชบอร์ดเจ้าของร้าน (สมาชิก/แต้ม active)", "รายงานแต้มออก/ถูกใช้ + มูลค่า", "Platform admin (ภาพรวมหลายแบรนด์)"] },
+      { "name": "QA · UAT · Deploy", "startDay": 73, "endDay": 90, "items": ["เทสรวมทั้งระบบ + แก้บั๊ก", "UAT กับสาขานำร่อง", "deploy production + ส่งมอบ + เอกสารใช้งาน"] }
+    ]
+  },
   "assumptions": [
     "ลูกค้าปลายทางไม่มี self-service — ทุกการสะสม/แลกทำผ่านพนักงานที่ Staff Terminal (เว็บ responsive); ระบุตัวสมาชิกด้วยเบอร์โทร",
     "Referral ในบริบท POS-only = พนักงานกรอกรหัส/เบอร์ผู้แนะนำตอนสมัครสมาชิกใหม่ (ไม่มี channel ให้ลูกค้าแชร์เอง)",

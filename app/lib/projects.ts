@@ -2,10 +2,11 @@ import fs from "node:fs";
 import path from "node:path";
 
 // หาตำแหน่งโฟลเดอร์ data ตามลำดับ:
-//   1) env PRESALES_OUTPUT (absolute path) — override เองได้
-//   2) presales/output ของจริง (เครื่อง dev: 2 repo อยู่ติดกัน) — source of truth
-//   3) ./data ที่ bundle มากับ repo (Vercel/standalone: deploy แค่ repo เดียว ไม่มี presales/output)
-// gen snapshot ข้อ 3 ด้วย `npm run sync:data` ก่อน deploy
+//   1) env PRESALES_OUTPUT (absolute path) — override เอง (optional)
+//   2) presales/output (เครื่อง dev ที่วาง 2 repo ติดกัน) — มี fs.existsSync guard, ไม่มีก็ข้าม
+//   3) ./data ในตัว repo — **standalone default** (clone ไปที่ไหนก็ใช้อันนี้)
+// repo นี้ standalone: ปกติใช้ข้อ 3 (data/ อยู่ใน repo) · ข้อ 2 ไว้ dev คู่ presales เท่านั้น
+// วิธีสร้าง data.json ใหม่: ดู docs/quotation-spec.md
 function resolveOutputRoot(): string {
   if (process.env.PRESALES_OUTPUT) return process.env.PRESALES_OUTPUT;
   const live = path.resolve(process.cwd(), "..", "..", "ai-agents", "presales", "output");
@@ -61,6 +62,21 @@ export type AiEstimate = {
   risks?: Risk[];
 };
 
+// แผนงานโปรเจกต์ (กำหนดการส่งมอบตามเวลา) — relative working day · คนละเรื่องกับ timeline ของ AI agent
+export type SchedulePhase = {
+  name: string;
+  startDay: number; // วันเริ่ม (relative working day, 1-based)
+  endDay: number;
+  group?: string; // โยงกลุ่มโมดูล (A/B/...) ถ้ามี
+  items: string[]; // งานหลักในเฟส
+};
+export type ProjectSchedule = {
+  unit?: "day";
+  daysPerWeek?: number; // default 5
+  note?: string;
+  phases: SchedulePhase[];
+};
+
 export type Project = {
   id: string;
   projectName: string;
@@ -96,6 +112,7 @@ export type Project = {
     verdict: string;
   };
   phasing?: { recommend: string; phase1: string; phase2: string };
+  schedule?: ProjectSchedule; // แผนงานโปรเจกต์ (Gantt + ไทม์ไลน์) — relative working day
   assumptions: string[];
   risks: Risk[];
   openQuestions: string[];
@@ -156,6 +173,24 @@ export function totals(p: Project) {
 
 export function fmtTHB(n: number) {
   return new Intl.NumberFormat("th-TH").format(n);
+}
+
+// ---- ตัวช่วยแผนงาน (schedule) — วาง Gantt ----
+export function scheduleTotalDays(s: ProjectSchedule) {
+  return Math.max(1, ...s.phases.map((ph) => ph.endDay));
+}
+export function scheduleWeeks(s: ProjectSchedule) {
+  const perWeek = s.daysPerWeek && s.daysPerWeek > 0 ? s.daysPerWeek : 5;
+  return Math.max(1, Math.ceil(scheduleTotalDays(s) / perWeek));
+}
+export function phasePos(
+  phase: { startDay: number; endDay: number },
+  totalDays: number,
+) {
+  const total = totalDays > 0 ? totalDays : 1;
+  const start = Math.max(0, phase.startDay - 1);
+  const span = Math.max(1, phase.endDay - phase.startDay + 1);
+  return { leftPct: (start / total) * 100, widthPct: (span / total) * 100 };
 }
 
 // ---- ตัวช่วยคำนวณโหมด AI (คู่ขนานกับ totals() — ไม่แตะของเดิม) ----

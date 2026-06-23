@@ -71,13 +71,15 @@ presales-quotation/
 └── package.json
 ```
 
-> 📌 **ข้อมูล (`data.json` / `output.html`) ไม่ได้อยู่ใน repo นี้** — อยู่ที่ `ai-agents/presales/output/<uuid>/`
+> 📌 **ข้อมูลอยู่ใน `data/<uuid>/data.json` ของ repo นี้** (standalone — มีตัวอย่าง 3 ใบให้แล้ว) ·
+> วิธีสร้าง `data.json` ใหม่ดู [`docs/quotation-spec.md`](docs/quotation-spec.md) ·
+> (ตอน dev คู่ repo presales จะ override ด้วย env `PRESALES_OUTPUT` ก็ได้ — optional)
 
 ---
 
 ## 🚀 Getting Started
 
-**Prerequisites:** Node.js 20+ และโฟลเดอร์ `ai-agents/presales/output/` ที่มีใบประเมินอย่างน้อย 1 ใบ
+**Prerequisites:** Node.js 20+ · มีใบประเมินใน `data/` อย่างน้อย 1 ใบ (repo นี้มีตัวอย่างให้แล้ว 3 ใบ)
 
 ```bash
 # ติดตั้ง dependencies
@@ -157,39 +159,34 @@ PRESALES_OUTPUT=/path/to/presales/output npm run start
 
 ---
 
-## ➕ เพิ่มโปรเจกต์ใหม่
+## ➕ เพิ่มโปรเจกต์ใหม่ (standalone)
 
-ไม่ต้องแตะโค้ดแอปนี้เลย — ให้ agent "เคาะดีญะฮ์" สร้างใบประเมิน ซึ่งจะวางไฟล์ที่:
+ไม่ต้องแตะโค้ดแอป — สร้างไฟล์เดียว:
 
 ```
-ai-agents/presales/output/<uuid-v7>/
-├── data.json      ← แอปนี้อ่านไป render
-└── output.html    ← ใบเสนอ standalone (เปิดตรงในเบราว์เซอร์ก็ได้)
+data/<uuid-v7>/data.json      ← แอปนี้อ่านไป render
 ```
 
-บนเครื่อง dev: รีเฟรช `/project` แล้วโปรเจกต์ใหม่จะโผล่ขึ้นมาเอง (อ่าน `presales/output` ของจริงตรง ๆ) 🎉
+**วิธีสร้าง `data.json` ให้ถูกต้อง (รวมวิธีตีราคา/man-day/schedule):** อ่าน [`docs/quotation-spec.md`](docs/quotation-spec.md) ·
+ดูตัวอย่างจริงได้ใน `data/` (3 ใบ) · AI agent gen เองได้จากไกด์นั้นโดยไม่ต้องพึ่ง repo อื่น
+
+บนเครื่อง dev: รีเฟรช `/project` แล้วโปรเจกต์ใหม่จะโผล่ขึ้นมาเอง 🎉
 
 ---
 
 ## ☁️ Deploy (Vercel)
 
-Vercel deploy แค่ **repo เดียว** จึงไม่มีโฟลเดอร์ `presales/output` (อยู่อีก repo) — ต้อง **bundle snapshot ของ data เข้ามาใน repo นี้ก่อน** ผ่านโฟลเดอร์ `data/`
-
-```bash
-npm run sync:data    # ก๊อป data.json ทุกใบจาก presales/output → ./data
-git add data && git commit -m "chore: sync quotation data"
-git push             # Vercel auto-redeploy
-```
+repo นี้ **standalone** — `data/` อยู่ใน repo อยู่แล้ว → commit + push แล้ว Vercel deploy ได้เลย (ไม่ต้องพึ่ง repo อื่น)
 
 ลำดับการหา data (ใน [`app/lib/projects.ts`](app/lib/projects.ts)):
 
 | ลำดับ | แหล่ง | ใช้เมื่อ |
 |---|---|---|
-| 1 | `PRESALES_OUTPUT` (env) | override เอง |
-| 2 | `../../ai-agents/presales/output` | เครื่อง dev (2 repo ติดกัน) — ของจริง |
-| 3 | `./data` (committed snapshot) | **Vercel / standalone** |
+| 1 | `PRESALES_OUTPUT` (env) | override เอง (optional) |
+| 2 | `../../ai-agents/presales/output` | ตอน dev คู่ repo presales (ถ้ามี) — มี `fs.existsSync` guard, ไม่มีก็ข้าม |
+| 3 | `./data` (in-repo) | **standalone / Vercel — ค่าเริ่มต้น** |
 
-> 🔁 ทุกครั้งที่มีใบประเมินใหม่ แล้วอยากให้ขึ้น Vercel → รัน `npm run sync:data` แล้ว push ใหม่
+> 🔁 (optional) ถ้าทำงานคู่ presales: `npm run sync:data` ก๊อป data.json จาก presales/output → `./data` แล้ว push
 > ⚠️ ไซต์ public — `data/` มีราคา/ชื่อลูกค้าจริง ใครมีลิงก์ก็เห็นได้
 
 ---

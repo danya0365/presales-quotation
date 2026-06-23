@@ -1,8 +1,132 @@
 import Link from "next/link";
-import { totals, sumMd, aiTotals, fmtTHB, type Project } from "@/app/lib/projects";
+import {
+  totals,
+  sumMd,
+  aiTotals,
+  fmtTHB,
+  scheduleTotalDays,
+  scheduleWeeks,
+  phasePos,
+  type Project,
+  type ProjectSchedule,
+} from "@/app/lib/projects";
 import SectionNav, { type TocItem } from "./SectionNav";
 
 export type Audience = "client" | "internal";
+
+// สีแท่ง/จุด วนตามเฟส (จาก token ของเอกสาร)
+const SCHED_COLORS = ["#3E7C76", "#C98A3B", "#4F7A52", "#2F605B", "#A8543F"];
+
+/** แผนงานโปรเจกต์: Gantt แนวนอน (เลื่อนข้าง, ชื่อเฟส sticky) + ไทม์ไลน์แนวตั้ง */
+function ScheduleBlock({ schedule }: { schedule: ProjectSchedule }) {
+  const total = scheduleTotalDays(schedule);
+  const weeks = scheduleWeeks(schedule);
+  const WEEK_PX = 60;
+  const trackWidth = weeks * WEEK_PX;
+  const weekIdx = Array.from({ length: weeks }, (_, i) => i);
+
+  return (
+    <div className="mb-2">
+      {schedule.note && (
+        <p className="mb-3 text-sm text-[#5C6A68]">{schedule.note}</p>
+      )}
+
+      {/* Gantt */}
+      <div className="overflow-x-auto rounded-xl border border-[#DED8C8] bg-white">
+        <div className="min-w-max">
+          <div className="flex border-b border-[#DED8C8] bg-[#F7F4EC]">
+            <div className="sticky left-0 z-10 w-44 flex-none bg-[#F7F4EC] px-3 py-2 text-xs font-bold text-[#2F605B]">
+              เฟส
+            </div>
+            <div className="flex" style={{ width: trackWidth }}>
+              {weekIdx.map((w) => (
+                <div
+                  key={w}
+                  className="flex-none border-l border-[#DED8C8] py-2 text-center text-[11px] text-[#5C6A68]"
+                  style={{ width: WEEK_PX }}
+                >
+                  ส.{w + 1}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {schedule.phases.map((ph, i) => {
+            const pos = phasePos(ph, total);
+            return (
+              <div key={i} className="flex border-t border-[#DED8C8]">
+                <div className="sticky left-0 z-10 w-44 flex-none bg-white px-3 py-2">
+                  <div className="truncate text-sm font-semibold text-[#2D3A3A]">
+                    {ph.name}
+                  </div>
+                  <div className="text-[11px] text-[#5C6A68]">
+                    วัน {ph.startDay}–{ph.endDay}
+                  </div>
+                </div>
+                <div className="relative" style={{ width: trackWidth, height: 44 }}>
+                  {weekIdx.map((w) => (
+                    <div
+                      key={w}
+                      className="absolute bottom-0 top-0 border-l border-[#EAE6DA]"
+                      style={{ left: w * WEEK_PX }}
+                    />
+                  ))}
+                  <div
+                    className="absolute rounded-md"
+                    style={{
+                      left: `${pos.leftPct}%`,
+                      width: `${pos.widthPct}%`,
+                      top: 11,
+                      height: 22,
+                      background: SCHED_COLORS[i % SCHED_COLORS.length],
+                    }}
+                    title={`${ph.name}: วัน ${ph.startDay}–${ph.endDay}`}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ไทม์ไลน์แนวตั้ง */}
+      <ol className="mt-5 space-y-3">
+        {schedule.phases.map((ph, i) => {
+          const last = i === schedule.phases.length - 1;
+          return (
+            <li key={i} className="relative pl-6">
+              {!last && (
+                <span className="absolute left-[5px] top-3 h-full w-px bg-[#DED8C8]" />
+              )}
+              <span
+                className="absolute left-0 top-1.5 h-3 w-3 rounded-full border-2 border-[#FBFAF6]"
+                style={{ background: SCHED_COLORS[i % SCHED_COLORS.length] }}
+              />
+              <p className="text-sm font-semibold text-[#2D3A3A]">
+                <span className="font-normal text-[#5C6A68]">
+                  วัน {ph.startDay}–{ph.endDay} ·{" "}
+                </span>
+                {ph.name}
+                {ph.group && (
+                  <span className="ml-1 font-mono text-[11px] text-[#5C6A68]">
+                    [{ph.group}]
+                  </span>
+                )}
+              </p>
+              {ph.items.length > 0 && (
+                <ul className="mt-1 list-disc space-y-0.5 pl-4 text-sm text-[#5C6A68]">
+                  {ph.items.map((it, j) => (
+                    <li key={j}>{it}</li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
 
 function complexityBadge(c: string) {
   const low = /low|ต่ำ/i.test(c);
@@ -69,7 +193,7 @@ export default function ProjectView({
   // เวอร์ชันลูกค้า: ตัดรหัสโมดูลภายในแบบ "(M-07)" ที่อาจฝังใน free-text ออก
   const clean = (s: string) => (internal ? s : s.replace(/\s*\(M-\d+\)/g, ""));
 
-  // สารบัญ — ตามลำดับ section ใน document-spec.md (เฉพาะ section ที่หน้านี้แสดงจริง)
+  // สารบัญ — ตามลำดับ section ใน docs/quotation-spec.md (เฉพาะ section ที่หน้านี้แสดงจริง)
   const toc: TocItem[] = [
     { id: "overview", label: "ภาพรวม" },
     { id: "scope", label: "ขอบเขตงาน" },
@@ -77,7 +201,9 @@ export default function ProjectView({
     ...(p.useCases?.length ? [{ id: "usecases", label: "Use Case" }] : []),
     { id: "modules", label: internal ? "โมดูล & man-day" : "ฟีเจอร์" },
     ...(p.nonFunctional?.length ? [{ id: "nonfunc", label: "Non-functional" }] : []),
-    ...(internal && p.timeline ? [{ id: "timeline", label: "Timeline & Stack" }] : []),
+    ...(p.schedule || (internal && p.timeline)
+      ? [{ id: "timeline", label: internal ? "แผนงาน & Stack" : "แผนงาน" }]
+      : []),
     { id: "cost", label: "ค่าใช้จ่าย & ราคา" },
     { id: "notes", label: "สมมติฐาน & ความเสี่ยง" },
   ];
@@ -322,38 +448,54 @@ export default function ProjectView({
           </Section>
         ) : null}
 
-        {/* 7. Timeline & Stack — internal only */}
-        {internal && p.timeline && (
-          <Section id="timeline" n={secNum("timeline")} title="Timeline & เปรียบเทียบ Stack" sub={p.timeline.teamAssumption}>
-            <p className="mb-4 text-sm">{p.timeline.elapsedNote}</p>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {p.timeline.stacks.map((s, i) => (
-                <div
-                  key={s.name}
-                  className={`rounded-xl border border-[#DED8C8] bg-white p-5 ${
-                    i === 0 ? "border-t-4 border-t-[#3E7C76]" : "border-t-4 border-t-[#C98A3B]"
-                  }`}
-                >
-                  <h4 className="text-base font-bold">{s.name}</h4>
-                  <p className="mb-2 text-sm text-[#5C6A68]">⏱ {s.elapsed}</p>
-                  <ul className="space-y-1 text-sm">
-                    {s.pros.map((x, j) => (
-                      <li key={`p${j}`} className="text-[#4F7A52]">
-                        ✓ {x}
-                      </li>
-                    ))}
-                    {s.cons.map((x, j) => (
-                      <li key={`c${j}`} className="text-[#A8543F]">
-                        – {x}
-                      </li>
-                    ))}
-                  </ul>
+        {/* 7. แผนงาน (schedule: client+internal) + Timeline & Stack (internal only) */}
+        {(p.schedule || (internal && p.timeline)) && (
+          <Section
+            id="timeline"
+            n={secNum("timeline")}
+            title="แผนงาน & Timeline"
+            sub={internal && p.timeline ? p.timeline.teamAssumption : p.schedule?.note}
+          >
+            {p.schedule && p.schedule.phases.length > 0 && (
+              <ScheduleBlock schedule={p.schedule} />
+            )}
+
+            {internal && p.timeline && (
+              <div className={p.schedule ? "mt-8" : ""}>
+                <h3 className="mb-3 text-base font-bold text-[#2F605B]">
+                  เปรียบเทียบเทคโนโลยี (stack)
+                </h3>
+                <p className="mb-4 text-sm">{p.timeline.elapsedNote}</p>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {p.timeline.stacks.map((s, i) => (
+                    <div
+                      key={s.name}
+                      className={`rounded-xl border border-[#DED8C8] bg-white p-5 ${
+                        i === 0 ? "border-t-4 border-t-[#3E7C76]" : "border-t-4 border-t-[#C98A3B]"
+                      }`}
+                    >
+                      <h4 className="text-base font-bold">{s.name}</h4>
+                      <p className="mb-2 text-sm text-[#5C6A68]">⏱ {s.elapsed}</p>
+                      <ul className="space-y-1 text-sm">
+                        {s.pros.map((x, j) => (
+                          <li key={`p${j}`} className="text-[#4F7A52]">
+                            ✓ {x}
+                          </li>
+                        ))}
+                        {s.cons.map((x, j) => (
+                          <li key={`c${j}`} className="text-[#A8543F]">
+                            – {x}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <div className="mt-4 rounded-xl border-l-4 border-[#C98A3B] bg-[#F6ECCF] p-4 text-sm">
-              <strong className="text-[#2F605B]">สรุป:</strong> {p.timeline.verdict}
-            </div>
+                <div className="mt-4 rounded-xl border-l-4 border-[#C98A3B] bg-[#F6ECCF] p-4 text-sm">
+                  <strong className="text-[#2F605B]">สรุป:</strong> {p.timeline.verdict}
+                </div>
+              </div>
+            )}
           </Section>
         )}
 
